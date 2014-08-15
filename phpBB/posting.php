@@ -241,8 +241,7 @@ $user->setup(array('posting', 'mcp', 'viewtopic'), $post_data['forum_style']);
 
 if ($config['enable_post_confirm'] && !$user->data['is_registered'])
 {
-	include($phpbb_root_path . 'includes/captcha/captcha_factory.' . $phpEx);
-	$captcha = phpbb_captcha_factory::get_instance($config['captcha_plugin']);
+	$captcha = $phpbb_container->get('captcha.factory')->get_instance($config['captcha_plugin']);
 	$captcha->init(CONFIRM_POST);
 }
 
@@ -523,7 +522,9 @@ $orig_poll_options_size = sizeof($post_data['poll_options']);
 
 $message_parser = new parse_message();
 $plupload = $phpbb_container->get('plupload');
+$mimetype_guesser = $phpbb_container->get('mimetype.guesser');
 $message_parser->set_plupload($plupload);
+$message_parser->set_mimetype_guesser($mimetype_guesser);
 
 if (isset($post_data['post_text']))
 {

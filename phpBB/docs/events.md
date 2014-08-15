@@ -85,6 +85,50 @@ acp_posting_buttons_before
 * Since: 3.1.0-b4
 * Purpose: Add content before BBCode posting buttons in the ACP
 
+acp_ranks_edit_after
+===
+* Locations:
+    + adm/style/acp_ranks.html
+* Since: 3.1.0-RC3
+* Purpose: Add content after the rank details when editing a rank in the ACP
+
+acp_ranks_edit_before
+===
+* Locations:
+    + adm/style/acp_ranks.html
+* Since: 3.1.0-RC3
+* Purpose: Add content before the rank details when editing a rank in the ACP
+
+acp_ranks_list_column_after
+===
+* Locations:
+    + adm/style/acp_ranks.html
+* Since: 3.1.0-RC3
+* Purpose: Add content before the first column in the ranks list in the ACP
+
+acp_ranks_list_column_before
+===
+* Locations:
+    + adm/style/acp_ranks.html
+* Since: 3.1.0-RC3
+* Purpose: Add content after the last column (but before the action column) 
+in the ranks list in the ACP
+
+acp_ranks_list_header_after
+===
+* Locations:
+    + adm/style/acp_ranks.html
+* Since: 3.1.0-RC3
+* Purpose: Add content before the first header-column in the ranks list in the ACP
+
+acp_ranks_list_header_before
+===
+* Locations:
+    + adm/style/acp_ranks.html
+* Since: 3.1.0-RC3
+* Purpose: Add content after the last header-column (but before the action column) 
+in the ranks list in the ACP
+
 acp_simple_footer_after
 ===
 * Location: adm/style/simple_footer.html
@@ -835,6 +879,20 @@ ucp_agreement_terms_before
 * Since: 3.1.0-b3
 * Purpose: Add content before the terms of agreement text at user registration
 
+ucp_pm_viewmessage_avatar_after
+===
+* Locations:
+    + styles/prosilver/template/ucp_pm_viewmessage.html
+* Since: 3.1.0-RC3
+* Purpose: Add content right after the avatar when viewing a private message
+
+ucp_pm_viewmessage_avatar_before
+===
+* Locations:
+    + styles/prosilver/template/ucp_pm_viewmessage.html
+* Since: 3.1.0-RC3
+* Purpose: Add content right before the avatar when viewing a private message
+
 ucp_pm_viewmessage_contact_fields_after
 ===
 * Locations:
@@ -1040,6 +1098,22 @@ viewtopic_print_head_append
     + styles/subsilver2/template/viewtopic_print.html
 * Since: 3.1.0-a1
 * Purpose: Add asset calls directly before the `</head>` tag of the Print Topic screen
+
+viewtopic_body_avatar_after
+===
+* Locations:
+    + styles/prosilver/template/viewtopic_body.html
+    + styles/subsilver2/template/viewtopic_body.html
+* Since: 3.1.0-RC3
+* Purpose: Add content right after the avatar when viewing topics
+
+viewtopic_body_avatar_before
+===
+* Locations:
+    + styles/prosilver/template/viewtopic_body.html
+    + styles/subsilver2/template/viewtopic_body.html
+* Since: 3.1.0-RC3
+* Purpose: Add content right before the avatar when viewing topics
 
 viewtopic_body_contact_fields_after
 ===

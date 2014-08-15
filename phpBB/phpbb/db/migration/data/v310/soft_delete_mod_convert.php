@@ -119,8 +119,9 @@ class soft_delete_mod_convert extends \phpbb\db\migration\migration
 	{
 		return new \phpbb\content_visibility(
 			new \phpbb\auth\auth(),
+			$this->config,
 			$this->db,
-			new \phpbb\user(),
+			new \phpbb\user('\phpbb\datetime'),
 			$this->phpbb_root_path,
 			$this->php_ext,
 			$this->table_prefix . 'forums',

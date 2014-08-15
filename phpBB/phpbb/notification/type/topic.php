@@ -87,6 +87,7 @@ class topic extends \phpbb\notification\type\base
 	* Find the users who want to receive notifications
 	*
 	* @param array $topic Data from the topic
+	* @param array $options Options for finding users for notification
 	*
 	* @return array
 	*/
@@ -110,19 +111,7 @@ class topic extends \phpbb\notification\type\base
 		}
 		$this->db->sql_freeresult($result);
 
-		if (empty($users))
-		{
-			return array();
-		}
-
-		$auth_read = $this->auth->acl_get_list($users, 'f_read', $topic['forum_id']);
-
-		if (empty($auth_read))
-		{
-			return array();
-		}
-
-		return $this->check_user_notification_options($auth_read[$topic['forum_id']]['f_read'], $options);
+		return $this->get_authorised_recipients($users, $topic['forum_id'], $options);
 	}
 
 	/**

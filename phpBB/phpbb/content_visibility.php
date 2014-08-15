@@ -38,6 +38,12 @@ class content_visibility
 	protected $auth;
 
 	/**
+	* config object
+	* @var \phpbb\config\config
+	*/
+	protected $config;
+
+	/**
 	* phpBB root path
 	* @var string
 	*/
@@ -53,6 +59,7 @@ class content_visibility
 	* Constructor
 	*
 	* @param	\phpbb\auth\auth		$auth	Auth object
+	* @param	\phpbb\config\config	$config	Config object
 	* @param	\phpbb\db\driver\driver_interface	$db		Database object
 	* @param	\phpbb\user		$user			User object
 	* @param	string		$phpbb_root_path	Root path
@@ -62,9 +69,10 @@ class content_visibility
 	* @param	string		$topics_table		Topics table name
 	* @param	string		$users_table		Users table name
 	*/
-	public function __construct(\phpbb\auth\auth $auth, \phpbb\db\driver\driver_interface $db, \phpbb\user $user, $phpbb_root_path, $php_ext, $forums_table, $posts_table, $topics_table, $users_table)
+	public function __construct(\phpbb\auth\auth $auth, \phpbb\config\config $config, \phpbb\db\driver\driver_interface $db, \phpbb\user $user, $phpbb_root_path, $php_ext, $forums_table, $posts_table, $topics_table, $users_table)
 	{
 		$this->auth = $auth;
+		$this->config = $config;
 		$this->db = $db;
 		$this->user = $user;
 		$this->phpbb_root_path = $phpbb_root_path;
@@ -562,7 +570,7 @@ class content_visibility
 	* Add post to topic and forum statistics
 	*
 	* @param $data			array	Contains information from the topics table about given topic
-	* @param $sql_data		array	Populated with the SQL changes, may be empty at call time
+	* @param &$sql_data		array	Populated with the SQL changes, may be empty at call time
 	* @return null
 	*/
 	public function add_post_to_statistic($data, &$sql_data)
@@ -576,90 +584,68 @@ class content_visibility
 			$sql_data[$this->users_table] = (($sql_data[$this->users_table]) ? $sql_data[$this->users_table] . ', ' : '') . 'user_posts = user_posts + 1';
 		}
 
-		set_config_count('num_posts', 1, true);
+		$this->config->increment('num_posts', 1, false);
 	}
 
 	/**
 	* Remove post from topic and forum statistics
 	*
 	* @param $data			array	Contains information from the topics table about given topic
-	* @param $sql_data		array	Populated with the SQL changes, may be empty at call time
+	* @param &$sql_data		array	Populated with the SQL changes, may be empty at call time
 	* @return null
 	*/
 	public function remove_post_from_statistic($data, &$sql_data)
 	{
-		$sql_data[$this->topics_table] = ((!empty($sql_data[$this->topics_table])) ? $sql_data[$this->topics_table] . ', ' : '') . 'topic_posts_approved = topic_posts_approved - 1';
-		$sql_data[$this->forums_table] = ((!empty($sql_data[$this->forums_table])) ? $sql_data[$this->forums_table] . ', ' : '') . 'forum_posts_approved = forum_posts_approved - 1';
-
-		if ($data['post_postcount'])
+		if ($data['post_visibility'] == ITEM_APPROVED)
 		{
-			$sql_data[$this->users_table] = ((!empty($sql_data[$this->users_table])) ? $sql_data[$this->users_table] . ', ' : '') . 'user_posts = user_posts - 1';
-		}
+			$sql_data[$this->topics_table] = ((!empty($sql_data[$this->topics_table])) ? $sql_data[$this->topics_table] . ', ' : '') . 'topic_posts_approved = topic_posts_approved - 1';
+			$sql_data[$this->forums_table] = ((!empty($sql_data[$this->forums_table])) ? $sql_data[$this->forums_table] . ', ' : '') . 'forum_posts_approved = forum_posts_approved - 1';
 
-		set_config_count('num_posts', -1, true);
+			if ($data['post_postcount'])
+			{
+				$sql_data[$this->users_table] = ((!empty($sql_data[$this->users_table])) ? $sql_data[$this->users_table] . ', ' : '') . 'user_posts = user_posts - 1';
+			}
+
+			$this->config->increment('num_posts', -1, false);
+		}
+		else if ($data['post_visibility'] == ITEM_UNAPPROVED || $data['post_visibility'] == ITEM_REAPPROVE)
+		{
+			$sql_data[FORUMS_TABLE] = (($sql_data[FORUMS_TABLE]) ? $sql_data[FORUMS_TABLE] . ', ' : '') . 'forum_posts_unapproved = forum_posts_unapproved - 1';
+			$sql_data[TOPICS_TABLE] = (($sql_data[TOPICS_TABLE]) ? $sql_data[TOPICS_TABLE] . ', ' : '') . 'topic_posts_unapproved = topic_posts_unapproved - 1';
+		}
+		else if ($data['post_visibility'] == ITEM_DELETED)
+		{
+			$sql_data[FORUMS_TABLE] = (($sql_data[FORUMS_TABLE]) ? $sql_data[FORUMS_TABLE] . ', ' : '') . 'forum_posts_softdeleted = forum_posts_softdeleted - 1';
+			$sql_data[TOPICS_TABLE] = (($sql_data[TOPICS_TABLE]) ? $sql_data[TOPICS_TABLE] . ', ' : '') . 'topic_posts_softdeleted = topic_posts_softdeleted - 1';
+		}
 	}
 
 	/**
 	* Remove topic from forum statistics
 	*
-	* @param $topic_id		int		The topic to act on
-	* @param $forum_id		int		Forum where the topic is found
-	* @param $topic_row		array	Contains information from the topic, may be empty at call time
-	* @param $sql_data		array	Populated with the SQL changes, may be empty at call time
+	* @param $data			array	Post and topic data
+	* @param &$sql_data		array	Populated with the SQL changes, may be empty at call time
 	* @return null
 	*/
-	public function remove_topic_from_statistic($topic_id, $forum_id, &$topic_row, &$sql_data)
+	public function remove_topic_from_statistic($data, &$sql_data)
 	{
-		// Do we need to grab some topic informations?
-		if (!sizeof($topic_row))
+		if ($data['topic_visibility'] == ITEM_APPROVED)
 		{
-			$sql = 'SELECT topic_type, topic_posts_approved, topic_posts_unapproved, topic_posts_softdeleted, topic_visibility
-				FROM ' . $this->topics_table . '
-				WHERE topic_id = ' . (int) $topic_id;
-			$result = $this->db->sql_query($sql);
-			$topic_row = $this->db->sql_fetchrow($result);
-			$this->db->sql_freeresult($result);
+			$sql_data[FORUMS_TABLE] .= 'forum_posts_approved = forum_posts_approved - 1, forum_topics_approved = forum_topics_approved - 1';
+
+			if ($data['post_postcount'])
+			{
+				$sql_data[$this->users_table] = ((!empty($sql_data[$this->users_table])) ? $sql_data[$this->users_table] . ', ' : '') . 'user_posts = user_posts - 1';
+			}
+		}
+		else if ($data['topic_visibility'] == ITEM_UNAPPROVED || $data['post_visibility'] == ITEM_REAPPROVE)
+		{
+			$sql_data[FORUMS_TABLE] .= 'forum_posts_unapproved = forum_posts_unapproved - 1, forum_topics_unapproved = forum_topics_unapproved - 1';
+		}
+		else if ($data['topic_visibility'] == ITEM_DELETED)
+		{
+			$sql_data[FORUMS_TABLE] .= 'forum_posts_softdeleted = forum_posts_softdeleted - 1, forum_topics_softdeleted = forum_topics_softdeleted - 1';
 		}
 
-		// If this is an edited topic or the first post the topic gets completely disapproved later on...
-		$sql_data[$this->forums_table] = (($sql_data[$this->forums_table]) ? $sql_data[$this->forums_table] . ', ' : '') . 'forum_topics_approved = forum_topics_approved - 1';
-		$sql_data[$this->forums_table] .= ', forum_posts_approved = forum_posts_approved - ' . $topic_row['topic_posts_approved'];
-		$sql_data[$this->forums_table] .= ', forum_posts_unapproved = forum_posts_unapproved - ' . $topic_row['topic_posts_unapproved'];
-		$sql_data[$this->forums_table] .= ', forum_posts_softdeleted = forum_posts_softdeleted - ' . $topic_row['topic_posts_softdeleted'];
-
-		set_config_count('num_topics', -1, true);
-		set_config_count('num_posts', $topic_row['topic_posts_approved'] * (-1), true);
-
-		// Get user post count information
-		$sql = 'SELECT poster_id, COUNT(post_id) AS num_posts
-			FROM ' . $this->posts_table . '
-			WHERE topic_id = ' . (int) $topic_id . '
-				AND post_postcount = 1
-				AND post_visibility = ' . ITEM_APPROVED . '
-			GROUP BY poster_id';
-		$result = $this->db->sql_query($sql);
-
-		$postcounts = array();
-		while ($row = $this->db->sql_fetchrow($result))
-		{
-			$postcounts[(int) $row['num_posts']][] = (int) $row['poster_id'];
-		}
-		$this->db->sql_freeresult($result);
-
-		// Decrement users post count
-		foreach ($postcounts as $num_posts => $poster_ids)
-		{
-			$sql = 'UPDATE ' . $this->users_table . '
-				SET user_posts = 0
-				WHERE user_posts < ' . $num_posts . '
-					AND ' . $this->db->sql_in_set('user_id', $poster_ids);
-			$this->db->sql_query($sql);
-
-			$sql = 'UPDATE ' . $this->users_table . '
-				SET user_posts = user_posts - ' . $num_posts . '
-				WHERE user_posts >= ' . $num_posts . '
-					AND ' . $this->db->sql_in_set('user_id', $poster_ids);
-			$this->db->sql_query($sql);
-		}
 	}
 }
